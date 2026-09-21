@@ -1,0 +1,113 @@
+version: '3.8'
+
+networks:
+  omniverse-net:
+    driver: bridge
+
+volumes:
+  pg_data:
+  mongo_data:
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: omniverse-postgres
+    environment:
+      POSTGRES_USER: omniverse
+      POSTGRES_PASSWORD: omni_pass
+      POSTGRES_DB: omniverse_db
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./services/api-gateway/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - omniverse-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omniverse -d omniverse_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mongo:
+    image: mongo:6.0
+    container_name: omniverse-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: omniverse
+      MONGO_INITDB_ROOT_PASSWORD: omni_pass
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - omniverse-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: omniverse-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - omniverse-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: omniverse-api-gateway
+    environment:
+      PORT: 5000
+      DATABASE_URL: postgresql://omniverse:omni_pass@postgres:5432/omniverse_db
+      MONGO_URL: mongodb://omniverse:omni_pass@mongo:27017/omniverse_telemetry?authSource=admin
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - omniverse-net
+
+  ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile
+    container_name: omniverse-ai-service
+    ports:
+      - "8000:8000"
+    networks:
+      - omniverse-net
+
+  media-worker:
+    build:
+      context: ./services/media-worker
+      dockerfile: Dockerfile
+    container_name: omniverse-media-worker
+    environment:
+      REDIS_HOST: redis
+      AI_SERVICE_URL: http://ai-service:8000
+      GATEWAY_URL: http://api-gateway:5000
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - omniverse-net
+
+  web-client:
+    build:
+      context: ./apps/web-client
+      dockerfile: Dockerfile
+    container_name: omniverse-web-client
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks:
+      - omniverse-net
