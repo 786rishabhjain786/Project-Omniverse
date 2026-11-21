@@ -8,7 +8,7 @@ Project Omniverse is an end-to-end distributed system that processes media inges
 
 ## 🏛️ System Architecture
 
-[ Next.js 14 Web Client ]  (Port 3000)
+[ Next.js 16 Web Client ]  (Port 3000)
             │  HTTP REST (Enqueue Job)
             ▼
 [ Node.js API Gateway ]     (Port 5000)
@@ -39,7 +39,7 @@ Project Omniverse is an end-to-end distributed system that processes media inges
 
 | Component | Technology | Responsibility |
 | :--- | :--- | :--- |
-| **Frontend UI** | Next.js 14, React, Tailwind CSS | Real-time dashboard to dispatch jobs and inspect status |
+| **Frontend UI** | Next.js 16, React, Tailwind CSS | Real-time dashboard to dispatch jobs and inspect status |
 | **API Gateway** | Node.js, Express, TypeScript | Request orchestration, queue dispatch, database access |
 | **Media Worker** | C# .NET 8 (BackgroundService) | High-throughput queue polling and media demux simulation |
 | **AI Microservice** | Python 3.11, FastAPI, Pydantic | Vision & speech inference heuristics and metadata extraction |

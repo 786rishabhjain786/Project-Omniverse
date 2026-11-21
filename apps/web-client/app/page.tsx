@@ -7,7 +7,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
 
   const triggerJob = async () => {
-    if (!jobTitle) return;
+    if (!jobTitle.trim()) return;
     setIsLoading(true);
     setLogs((prev) => [...prev, `[Client] Dispatching job: "${jobTitle}" to API Gateway...`]);
 
@@ -19,9 +19,15 @@ export default function Home() {
         body: JSON.stringify({ title: jobTitle, mediaType: 'video/mp4' }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Gateway returned HTTP ${res.status}`);
+      }
+      if (!data.jobId) {
+        throw new Error('Gateway response did not include a job ID');
+      }
       setLogs((prev) => [
         ...prev,
-        `[Gateway Response 202] Enqueued Job ID: ${data.job?.jobId}`,
+        `[Gateway Response 202] Enqueued Job ID: ${data.jobId}`,
         `[Redis Queue] Broadcast to C# .NET Worker for multi-threaded processing.`
       ]);
       setJobTitle('');
